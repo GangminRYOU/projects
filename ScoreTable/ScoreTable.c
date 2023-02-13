@@ -13,11 +13,22 @@ typedef struct NODE
 	struct NODE* pNext;
 } NODE;
 
+typedef struct IDXL
+{
+	int idx;
+	NODE* origin;
+	struct IDXL* idxNext;
+} IDXL;
+
+
+
+IDXL* g_sortHead = NULL;
 NODE g_head = { 0 };
 NODE* g_pTail = 0;
-int IndexNode(void)
+
+int NodeLength(void)
 {
-	int i = 0;
+	int i = 1;
 	NODE* pTmp = &g_head;
 	while (pTmp->pNext != NULL)
 	{
@@ -36,7 +47,7 @@ int IsEmpty(void)
 }
 void WriteData(NODE* pNode)
 {
-	int index = IndexNode();
+	int index = NodeLength();
 	NODE spNode = { 0 };
 	NODE* sp = &spNode;
 	memcpy(pNode, sp, sizeof(NODE));
@@ -84,67 +95,89 @@ void PrintTable(void)
 	printf("\n");
 }
 
-
-void InnerSort(NODE* IScurrent)
+void IndexSort(NODE *pCurrent)
 {
-		
-	NODE* ISnext = IScurrent->pNext;
-	NODE* pPrev = &g_head;
-	while (IScurrent->pNext != NULL)
+	IDXL* pIdx = (IDXL*)malloc(sizeof(IDXL));
+	IDXL zIdx = { 0 };
+	IDXL* clear = &zIdx;
+	memcpy(pIdx, clear, sizeof(IDXL));
+	pIdx->origin = pCurrent;
+	IDXL* cSort = g_sortHead;
+	IDXL* prevSort = g_sortHead;
+	//인덱스 리스트가 비어있을 경우
+	if (g_sortHead == NULL)
 	{
-		if (IScurrent->nTotal > ISnext->nTotal)
+		g_sortHead = pIdx;
+	}
+	//비어있지 않을 경우
+	else
+	{
+		//가장 큰 값의 경우
+		if (pIdx->origin->nTotal > g_sortHead->origin->nTotal)
 		{
-			IScurrent->pNext = ISnext->pNext;
-			pPrev->pNext = ISnext;
-			ISnext->pNext = IScurrent;
+			pIdx->idxNext = g_sortHead;
+			g_sortHead = pIdx;
 		}
-		pPrev = IScurrent;
-		IScurrent = ISnext;
-		ISnext = IScurrent->pNext;
+		//가장 큰 값이 아닌 경우
+		else
+		{
+			while (cSort != NULL && pCurrent->nTotal < cSort->origin->nTotal)
+			{
+				prevSort = cSort;
+				cSort = cSort->idxNext;
+			}
+			pIdx->idxNext = cSort;
+			prevSort->idxNext = pIdx;
+		}
 	}
 }
 
-void SortList(void)
+int SortedList(void)
 {
-	NODE* OTcurrent = g_head.pNext;
-	while (OTcurrent != NULL)
+	NODE* pCur = g_head.pNext;
+	while (pCur != NULL)
 	{
-		InnerSort(OTcurrent);
-		OTcurrent = OTcurrent->pNext;
+		IndexSort(pCur);
+		pCur = pCur->pNext;
 	}
+	return (1);
 }
 
-int PopNode(NODE *Npop)
+void ReleaseIndex(void)
 {
-	if (IsEmpty())
-		return (0);
-	NODE* sp = g_head.pNext;
-	memcpy(Npop, sp, sizeof(NODE));
-	g_head.pNext = sp->pNext;
-	free(sp);
-	return (1);
+	IDXL* pIdxList = g_sortHead;
+
+	while (pIdxList != NULL)
+	{
+		IDXL* pIdxDelete = pIdxList;
+		pIdxList = pIdxList->idxNext;
+		free(pIdxDelete);
+	}
+	g_sortHead = NULL;
 }
 
 void PopList(void)
 {
 	PrintTable();
-	NODE pNode = { 0 };
+	SortedList();
+	IDXL* pCurrent = g_sortHead;
 	int i = 1;
-	SortList();
-	while (PopNode(&pNode) != 0)
+	while (pCurrent != 0)
 	{
-		printf("  %s  ", pNode.szName);
-		printf("%d  ", pNode.Kscore);
-		printf("%d  ", pNode.Escore);
-		printf("%d  ", pNode.Mscore);
-		printf("%d  ", pNode.nTotal);
-		printf("%d  ", pNode.nAverage);
+		printf("  %s  ", pCurrent->origin->szName);
+		printf("%d  ", pCurrent->origin->Kscore);
+		printf("%d  ", pCurrent->origin->Escore);
+		printf("%d  ", pCurrent->origin->Mscore);
+		printf("%d  ", pCurrent->origin->nTotal);
+		printf("%d  ", pCurrent->origin->nAverage);
 		printf("%d등  ", i);
 		printf("\n");
 		++i;
+		pCurrent = pCurrent->idxNext;
 	}
-
+	ReleaseIndex();
 }
+
 
 void recurMenu(void)
 {
@@ -166,9 +199,28 @@ void recurMenu(void)
 	recurMenu();
 }
 
+void ReleaseList(void)
+{
+	NODE* pCurrent = g_head.pNext;
+	while (pCurrent != NULL)
+	{
+		NODE* pDelete = pCurrent;
+		pCurrent = pCurrent->pNext;
+		printf("Deleting %s's score...\n", pDelete->szName);
+		free(pDelete);
+	}
+	ReleaseIndex();
+	puts("List Successfully Released\n");
+	
+	g_head.pNext = NULL;
+	g_pTail = NULL;
+	g_sortHead = NULL;
+}
+
 
 int main(void)
 {
 	recurMenu();
+	ReleaseList();
 	return (0);
 }
